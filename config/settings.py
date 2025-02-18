@@ -1,8 +1,8 @@
+import os
 from datetime import timedelta
 from pathlib import Path
 
 from requests.utils import default_headers
-from django.utils.translation import gettext_lazy as _
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
