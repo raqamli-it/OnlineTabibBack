@@ -1,3 +1,5 @@
+import code
+import email
 
 from rest_framework import status, permissions, generics
 from rest_framework.authentication import TokenAuthentication
@@ -5,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.core.mail import send_mail
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import RefreshToken, Token
 from django.contrib.auth import get_user_model
 import random
@@ -38,11 +41,18 @@ class RegisterView(APIView):
                 fail_silently=False,
             )
 
+            # ✅ Foydalanuvchi ro‘yxatdan o‘tgach, unga token beramiz
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+
             return Response({
-                "message": "Ro'yxatdan o'tdingiz. Emailga tasdiqlash kodi yuborildi."
+                "message": "Ro'yxatdan o'tmoqdasiz. Emailga tasdiqlash kodi yuborildi.",
+                "access_token": access_token,
+                "refresh_token": str(refresh),
             }, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 # Emailni tasdiqlash view
@@ -50,11 +60,10 @@ class VerifyEmailView(APIView):
     def post(self, request):
         serializer = VerifyEmailSerializer(data=request.data)
         if serializer.is_valid():
-            email = serializer.validated_data['email']
             verification_code = serializer.validated_data['verification_code']
 
             try:
-                user = Foydalanuvchi.objects.get(email=email)
+                user = Foydalanuvchi.objects.get(verification_code=verification_code)
                 if user.verification_code == verification_code:
                     user.is_email_verified = True
                     user.is_active = True  # Tasdiqlangach faol bo'ladi
@@ -159,10 +168,10 @@ class LogoutView(APIView):
             return Response({"message": "Xatolik yuz berdi.", "error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# Foydalanuvchi profilini ko'rish va yangilash view
 class UserProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = UserProfileSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]  # ✅ Token autentifikatsiyasini majburiy qilish
 
     def get_object(self):
         return self.request.user
@@ -214,9 +223,8 @@ class Verify_EmailView(APIView):
     def post(self, request):
         serializer = VerifyEmailSerializer(data=request.data)
         if serializer.is_valid():
-            email = serializer.validated_data["email"]
             verification_code = serializer.validated_data["verification_code"]
-            user = DoctorRegister.objects.filter(email=email, verification_code=verification_code).first()
+            user = DoctorRegister.objects.filter(verification_code=verification_code).first()
 
             if user:
                 user.is_verified = True

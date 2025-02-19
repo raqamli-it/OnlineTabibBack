@@ -23,7 +23,6 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 # Emailni tasdiqlash serializeri
 class VerifyEmailSerializer(serializers.Serializer):
-    email = serializers.EmailField()
     verification_code = serializers.CharField(max_length=6)
 
 # Email orqali kirish uchun serializer
